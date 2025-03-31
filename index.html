@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasySplit - Multi-Expense Splitter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0 auto;
+            padding: 15px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: clamp(1.5rem, 5vw, 2rem);
+            margin-bottom: 15px;
+        }
+        .navbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .nav-tab {
+            background-color: #ddd;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+        .nav-tab.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .nav-tab:hover {
+            background-color: #bbb;
+        }
+        .nav-tab.active:hover {
+            background-color: #45a049;
+        }
+        .input-section, .results {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            display: none;
+        }
+        .input-section.active, .results.active {
+            display: block;
+        }
+        .expense-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .expense-header input {
+            flex: 1;
+            margin-right: 10px;
+        }
+        label {
+            font-size: 1rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        input {
+            width: 100%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .delete-btn {
+            background-color: #f44336;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+        .person {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .person input {
+            flex: 1;
+            min-width: 0;
+        }
+        .person input.name {
+            flex: 2;
+        }
+        .person input.paid {
+            flex: 1.5;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .button-group button {
+            flex: 1;
+            min-width: 120px;
+        }
+        #results {
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+        .transaction {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .transaction.settled {
+            text-decoration: line-through;
+            color: #888;
+        }
+        .settle-btn {
+            background-color: #2196F3;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+        .settle-btn:hover {
+            background-color: #1976D2;
+        }
+        .share-btn {
+            background-color: #FF9800;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+        .share-btn:hover {
+            background-color: #F57C00;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        .status div {
+            margin: 5px 0;
+        }
+        .status .settled {
+            color: #4CAF50;
+        }
+        .status .owes {
+            color: #f44336;
+        }
+        @media (max-width: 600px) {
+            .person {
+                flex-direction: column;
+            }
+            .person input, .person button {
+                width: 100%;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            input, button {
+                font-size: 0.95rem;
+            }
+            .expense-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .navbar {
+                flex-direction: column;
+            }
+            .nav-tab {
+                width: 100%;
+            }
+        }
+        @media (min-width: 601px) {
+            .input-section, .results {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>EasySplit</h1>
+    <div class="navbar" id="navbar"></div>
+    <div id="input-sections">
+        <div class="input-section active" data-expense-id="0">
+            <div class="expense-header">
+                <input type="text" class="expense-name" placeholder="Expense Name (e.g., Dinner)">
+                <button class="delete-btn" onclick="deleteExpense(this)">Delete Expense</button>
+            </div>
+            <label>Total Amount: <input type="number" class="total-amount" step="0.01" placeholder="e.g., 100.00"></label>
+            <div class="people">
+                <div class="person">
+                    <input type="text" class="name" placeholder="Name">
+                    <input type="number" class="paid" step="0.01" placeholder="Amount Paid (optional)">
+                    <button class="delete-btn" onclick="deletePerson(this)">Delete</button>
+                </div>
+            </div>
+            <div class="button-group">
+                <button onclick="addPerson(this)">Add Person</button>
+            </div>
+        </div>
+    </div>
+    <div class="button-group" style="max-width: 800px; margin: 0 auto;">
+        <button onclick="addExpense()">Add Expense</button>
+        <button onclick="calculateAllSplits()">Calculate All Splits</button>
+    </div>
+    <div id="results-sections">
+        <div class="results active" data-expense-id="0">
+            <h2>Results</h2>
+            <div class="result-content" id="result-0"></div>
+        </div>
+    </div>
+
+    <script>
+        let allTransactions = [];
+        let expenseCount = 1;
+
+        // Check URL for shared expense data
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('expense')) {
+                displaySharedExpense(urlParams.get('expense'));
+            }
+            updateNavbar();
+        };
+
+        function updateNavbar() {
+            const navbar = document.getElementById('navbar');
+            const inputSections = Array.from(document.getElementsByClassName('input-section'));
+            navbar.innerHTML = '';
+            inputSections.forEach((section, index) => {
+                const name = section.querySelector('.expense-name').value.trim() || `Expense ${index + 1}`;
+                const tab = document.createElement('div');
+                tab.className = `nav-tab ${section.classList.contains('active') ? 'active' : ''}`;
+                tab.textContent = name;
+                tab.onclick = () => switchTab(index);
+                navbar.appendChild(tab);
+            });
+        }
+
+        function switchTab(index) {
+            const inputSections = document.getElementsByClassName('input-section');
+            const resultsSections = document.getElementsByClassName('results');
+            const navTabs = document.getElementsByClassName('nav-tab');
+            for (let i = 0; i < inputSections.length; i++) {
+                inputSections[i].classList.toggle('active', i === index);
+                resultsSections[i].classList.toggle('active', i === index);
+                navTabs[i].classList.toggle('active', i === index);
+            }
+        }
+
+        function addExpense() {
+            const inputSections = document.getElementById('input-sections');
+            const resultsSections = document.getElementById('results-sections');
+            const newInput = document.createElement('div');
+            newInput.className = 'input-section';
+            newInput.dataset.expenseId = expenseCount;
+            newInput.innerHTML = `
+                <div class="expense-header">
+                    <input type="text" class="expense-name" placeholder="Expense Name (e.g., Dinner)" oninput="updateNavbar()">
+                    <button class="delete-btn" onclick="deleteExpense(this)">Delete Expense</button>
+                </div>
+                <label>Total Amount: <input type="number" class="total-amount" step="0.01" placeholder="e.g., 100.00"></label>
+                <div class="people">
+                    <div class="person">
+                        <input type="text" class="name" placeholder="Name">
+                        <input type="number" class="paid" step="0.01" placeholder="Amount Paid (optional)">
+                        <button class="delete-btn" onclick="deletePerson(this)">Delete</button>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button onclick="addPerson(this)">Add Person</button>
+                </div>
+            `;
+            inputSections.appendChild(newInput);
+
+            const newResult = document.createElement('div');
+            newResult.className = 'results';
+            newResult.dataset.expenseId = expenseCount;
+            newResult.innerHTML = `<h2>Results</h2><div class="result-content" id="result-${expenseCount}"></div>`;
+            resultsSections.appendChild(newResult);
+
+            expenseCount++;
+            updateNavbar();
+            switchTab(expenseCount - 1);
+        }
+
+        function deleteExpense(button) {
+            const inputSections = document.getElementById('input-sections');
+            const resultsSections = document.getElementById('results-sections');
+            if (inputSections.children.length > 1) {
+                const expense = button.parentElement.parentElement;
+                const id = expense.dataset.expenseId;
+                expense.remove();
+                resultsSections.querySelector(`[data-expense-id="${id}"]`).remove();
+                allTransactions = allTransactions.filter(t => t.expenseId !== id);
+                updateNavbar();
+                switchTab(0);
+            }
+        }
+
+        function addPerson(button) {
+            const peopleDiv = button.parentElement.previousElementSibling;
+            const newPerson = document.createElement('div');
+            newPerson.className = 'person';
+            newPerson.innerHTML = `
+                <input type="text" class="name" placeholder="Name">
+                <input type="number" class="paid" step="0.01" placeholder="Amount Paid (optional)">
+                <button class="delete-btn" onclick="deletePerson(this)">Delete</button>
+            `;
+            peopleDiv.appendChild(newPerson);
+        }
+
+        function deletePerson(button) {
+            const peopleDiv = button.parentElement.parentElement;
+            if (peopleDiv.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+
+        function calculateAllSplits() {
+            allTransactions = [];
+            const inputSections = Array.from(document.getElementsByClassName('input-section'));
+            inputSections.forEach((expense, index) => {
+                const expenseName = expense.querySelector('.expense-name').value.trim() || `Expense ${index + 1}`;
+                const totalAmount = parseFloat(expense.querySelector('.total-amount').value) || 0;
+                const people = Array.from(expense.querySelectorAll('.person'));
+                const participants = people.map(person => ({
+                    name: person.querySelector('.name').value.trim() || 'Unnamed',
+                    paid: parseFloat(person.querySelector('.paid').value) || 0
+                })).filter(p => p.name);
+                const expenseId = expense.dataset.expenseId;
+
+                let result = '';
+                if (!totalAmount || participants.length === 0) {
+                    result = `Please enter a total amount and at least one person.`;
+                } else {
+                    const totalPaid = participants.reduce((sum, p) => sum + p.paid, 0);
+                    if (totalPaid < totalAmount) {
+                        result = `Error: Total paid (${totalPaid.toFixed(2)}) is less than total amount (${totalAmount.toFixed(2)}).`;
+                    } else {
+                        const splitPerPerson = totalAmount / participants.length;
+                        result = `Total: $${totalAmount.toFixed(2)}<br>Split per person: $${splitPerPerson.toFixed(2)}<br><br>Transactions:`;
+
+                        const balances = participants.map(p => ({
+                            name: p.name,
+                            balance: p.paid - splitPerPerson
+                        }));
+
+                        const debtors = balances.filter(b => b.balance < 0).map(b => ({ name: b.name, amount: Math.abs(b.balance) }));
+                        const creditors = balances.filter(b => b.balance > 0).map(b => ({ name: b.name, amount: b.balance }));
+
+                        let transactionId = allTransactions.length;
+                        if (debtors.length === 0 && creditors.length === 0) {
+                            result += '<div>Everyone is settled!</div>';
+                        } else {
+                            while (debtors.length > 0 && creditors.length > 0) {
+                                const debtor = debtors[0];
+                                const creditor = creditors[0];
+                                const amount = Math.min(debtor.amount, creditor.amount).toFixed(2);
+
+                                allTransactions.push({ id: transactionId++, expenseId, expenseName, debtor: debtor.name, creditor: creditor.name, amount, settled: false });
+
+                                debtor.amount -= parseFloat(amount);
+                                creditor.amount -= parseFloat(amount);
+
+                                if (debtor.amount <= 0.01) debtors.shift();
+                                if (creditor.amount <= 0.01) creditors.shift();
+                            }
+
+                            result += '<div class="transactions">';
+                            allTransactions.filter(t => t.expenseId === expenseId).forEach(t => {
+                                result += `
+                                    <div class="transaction ${t.settled ? 'settled' : ''}" id="trans-${t.id}">
+                                        <span>${t.debtor} owes ${t.creditor} $${t.amount}</span>
+                                        <button class="settle-btn" onclick="settleUp(${t.id})">${t.settled ? 'Undo' : 'Settle Up'}</button>
+                                    </div>`;
+                            });
+                            result += '</div>';
+                        }
+                        // Add Share button
+                        const shareData = { name: expenseName, total: totalAmount, participants };
+                        const encodedData = btoa(JSON.stringify(shareData)); // Base64 encode
+                        const shareUrl = `${window.location.origin}${window.location.pathname}?expense=${encodedData}`;
+                        result += `<br><button class="share-btn" onclick="navigator.clipboard.writeText('${shareUrl}')">Copy Share Link</button>`;
+                    }
+                }
+                document.getElementById(`result-${expenseId}`).innerHTML = result;
+            });
+            updateStatus();
+        }
+
+        function settleUp(id) {
+            const transaction = allTransactions.find(t => t.id === id);
+            transaction.settled = !transaction.settled;
+            const transElement = document.getElementById(`trans-${id}`);
+            transElement.classList.toggle('settled');
+            const button = transElement.querySelector('.settle-btn');
+            button.textContent = transaction.settled ? 'Undo' : 'Settle Up';
+            updateStatus();
+        }
+
+        function updateStatus() {
+            const statusDiv = document.getElementById('result-0');
+            const status = {};
+            allTransactions.forEach(t => {
+                if (!status[t.debtor]) status[t.debtor] = 0;
+                if (!status[t.creditor]) status[t.creditor] = 0;
+                const amount = parseFloat(t.amount);
+                status[t.debtor] += t.settled ? 0 : amount;
+                status[t.creditor] -= t.settled ? 0 : amount;
+            });
+
+            let statusHtml = '<div class="status"><strong>Overall Status:</strong>';
+            Object.keys(status).forEach(person => {
+                const balance = status[person].toFixed(2);
+                if (Math.abs(balance) < 0.01) {
+                    statusHtml += `<div class="settled">${person}: Settled</div>`;
+                } else if (balance > 0) {
+                    statusHtml += `<div class="owes">${person}: Owes $${balance}</div>`;
+                } else {
+                    statusHtml += `<div>${person}: Owed $${Math.abs(balance)}</div>`;
+                }
+            });
+            statusHtml += '</div>';
+            const currentContent = document.getElementById('result-0').innerHTML;
+            document.getElementById('result-0').innerHTML = currentContent.replace(/<div class="status">[\s\S]*<\/div>/, '') + statusHtml;
+        }
+
+        function displaySharedExpense(encodedData) {
+            try {
+                const decodedData = JSON.parse(atob(encodedData));
+                const { name, total, participants } = decodedData;
+                const splitPerPerson = total / participants.length;
+                let result = `<strong>${name}</strong><br>Total: $${total.toFixed(2)}<br>Split per person: $${splitPerPerson.toFixed(2)}<br><br>Transactions:`;
+
+                const balances = participants.map(p => ({
+                    name: p.name,
+                    balance: p.paid - splitPerPerson
+                }));
+
+                const debtors = balances.filter(b => b.balance < 0).map(b => ({ name: b.name, amount: Math.abs(b.balance) }));
+                const creditors = balances.filter(b => b.balance > 0).map(b => ({ name: b.name, amount: b.balance }));
+
+                if (debtors.length === 0 && creditors.length === 0) {
+                    result += '<div>Everyone is settled!</div>';
+                } else {
+                    let transactions = [];
+                    while (debtors.length > 0 && creditors.length > 0) {
+                        const debtor = debtors[0];
+                        const creditor = creditors[0];
+                        const amount = Math.min(debtor.amount, creditor.amount).toFixed(2);
+                        transactions.push(`${debtor.name} owes ${creditor.name} $${amount}`);
+                        debtor.amount -= parseFloat(amount);
+                        creditor.amount -= parseFloat(amount);
+                        if (debtor.amount <= 0.01) debtors.shift();
+                        if (creditor.amount <= 0.01) creditors.shift();
+                    }
+                    result += '<div class="transactions">' + transactions.join('<br>') + '</div>';
+                }
+
+                const activeResult = document.querySelector('.results.active .result-content');
+                activeResult.innerHTML = result;
+                switchTab(0); // Show first tab with shared data
+            } catch (e) {
+                document.querySelector('.results.active .result-content').innerHTML = 'Invalid share link.';
+            }
+        }
+    </script>
+</body>
+</html>
