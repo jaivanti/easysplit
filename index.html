@@ -51,7 +51,7 @@
         .nav-tab.active:hover {
             background-color: #45a049;
         }
-        .input-section, .results {
+        .input-section, .results, .shared-view {
             background: white;
             padding: 15px;
             border-radius: 8px;
@@ -63,7 +63,7 @@
             margin-right: auto;
             display: none;
         }
-        .input-section.active, .results.active {
+        .input-section.active, .results.active, .shared-view.active {
             display: block;
         }
         .expense-header {
@@ -133,7 +133,7 @@
             flex: 1;
             min-width: 120px;
         }
-        #results {
+        .result-content, .shared-content {
             font-size: 0.9rem;
             overflow-x: auto;
         }
@@ -203,7 +203,7 @@
             }
         }
         @media (min-width: 601px) {
-            .input-section, .results {
+            .input-section, .results, .shared-view {
                 padding: 20px;
             }
         }
@@ -231,7 +231,7 @@
             </div>
         </div>
     </div>
-    <div class="button-group" style="max-width: 800px; margin: 0 auto;">
+    <div class="button-group" style="max-width: 800px; margin: 0 auto; display: none;" id="editor-buttons">
         <button onclick="addExpense()">Add Expense</button>
         <button onclick="calculateAllSplits()">Calculate All Splits</button>
     </div>
@@ -241,18 +241,31 @@
             <div class="result-content" id="result-0"></div>
         </div>
     </div>
+    <div id="shared-view" class="shared-view">
+        <h2>Shared Expense</h2>
+        <div class="shared-content" id="shared-content"></div>
+    </div>
 
     <script>
         let allTransactions = [];
         let expenseCount = 1;
+        let isSharedView = false;
 
         // Check URL for shared expense data
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('expense')) {
                 displaySharedExpense(urlParams.get('expense'));
+                isSharedView = true;
+                document.getElementById('navbar').style.display = 'none';
+                document.getElementById('input-sections').style.display = 'none';
+                document.getElementById('editor-buttons').style.display = 'none';
+                document.getElementById('results-sections').style.display = 'none';
+                document.getElementById('shared-view').classList.add('active');
+            } else {
+                updateNavbar();
+                document.getElementById('editor-buttons').style.display = 'flex';
             }
-            updateNavbar();
         };
 
         function updateNavbar() {
@@ -409,9 +422,8 @@
                             });
                             result += '</div>';
                         }
-                        // Add Share button
                         const shareData = { name: expenseName, total: totalAmount, participants };
-                        const encodedData = btoa(JSON.stringify(shareData)); // Base64 encode
+                        const encodedData = btoa(JSON.stringify(shareData));
                         const shareUrl = `${window.location.origin}${window.location.pathname}?expense=${encodedData}`;
                         result += `<br><button class="share-btn" onclick="navigator.clipboard.writeText('${shareUrl}')">Copy Share Link</button>`;
                     }
@@ -490,11 +502,9 @@
                     result += '<div class="transactions">' + transactions.join('<br>') + '</div>';
                 }
 
-                const activeResult = document.querySelector('.results.active .result-content');
-                activeResult.innerHTML = result;
-                switchTab(0); // Show first tab with shared data
+                document.getElementById('shared-content').innerHTML = result;
             } catch (e) {
-                document.querySelector('.results.active .result-content').innerHTML = 'Invalid share link.';
+                document.getElementById('shared-content').innerHTML = 'Invalid share link.';
             }
         }
     </script>
